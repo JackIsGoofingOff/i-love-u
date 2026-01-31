@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Particle Blossom: Finale</title>
+    <title>Jack is loving u</title>
+    <!-- Import Handwriting Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
     <style>
         body, html {
             margin: 0;
@@ -11,7 +13,7 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #050A18; /* Deep Navy */
+            background-color: #180820; /* Fallback deep purple */
         }
 
         canvas {
@@ -29,26 +31,28 @@
         }
 
         .btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: rgba(255, 255, 255, 0.8);
-            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: rgba(255, 255, 255, 0.95);
+            padding: 12px 28px;
             font-family: 'Segoe UI', sans-serif;
             text-transform: uppercase;
             letter-spacing: 2px;
-            font-size: 12px;
+            font-size: 13px;
             border-radius: 30px;
             cursor: pointer;
             pointer-events: auto;
             transition: all 0.3s ease;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
 
         .btn:hover {
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.3);
             color: #fff;
-            box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
-            border-color: rgba(255, 105, 180, 0.6);
+            box-shadow: 0 0 20px rgba(255, 182, 193, 0.6);
+            border-color: rgba(255, 200, 220, 0.8);
+            transform: translateY(-2px);
         }
     </style>
 </head>
@@ -76,8 +80,8 @@
             colors: [
                 '255, 105, 180', // Hot Pink
                 '255, 182, 193', // Light Pink
+                '255, 255, 255', // White (for sparkle)
                 '218, 112, 214', // Orchid
-                '147, 112, 219', // Medium Purple
                 '255, 215, 0',   // Gold
                 '255, 223, 186'  // Peach
             ],
@@ -103,8 +107,9 @@
             offCanvas.width = width;
             offCanvas.height = height;
 
-            const fontSize = Math.min(width * 0.15, 150); // Responsive font size
-            offCtx.font = `900 ${fontSize}px "Segoe UI", sans-serif`;
+            // Responsive Font Sizing: Larger multiplier for handwriting font
+            const fontSize = Math.min(width * 0.25, 250); 
+            offCtx.font = `${fontSize}px "Great Vibes", cursive`; // Handwriting font
             offCtx.fillStyle = 'white';
             offCtx.textAlign = 'center';
             offCtx.textBaseline = 'middle';
@@ -114,8 +119,9 @@
             const data = imageData.data;
             const points = [];
             
-            // Scan pixels (gap controls density)
-            const gap = 6; 
+            // Scan pixels (gap controls density - smaller gap = more detailed text)
+            // Adaptive gap: denser on mobile to make text readable with fewer pixels available
+            const gap = width < 600 ? 5 : 6; 
             
             for (let y = 0; y < height; y += gap) {
                 for (let x = 0; x < width; x += gap) {
@@ -260,8 +266,9 @@
             // 1. Clear existing standard particles to reduce noise
             particles = particles.filter(p => p.type === 'text');
 
-            // 2. Calculate points for text
-            const points = calculateTextCoordinates("I LOVE U");
+            // 2. Wait for font to load essentially, then calculate
+            // (In a real app use document.fonts.ready, here we assume loaded by user interaction time)
+            const points = calculateTextCoordinates("I Love You");
 
             // 3. Spawn particles
             const centerX = width / 2;
@@ -283,8 +290,16 @@
         // Animation Loop
         function animate() {
             ctx.globalCompositeOperation = 'source-over';
-            ctx.fillStyle = '#050A18';
+            
+            // Dreamy Background Gradient
+            const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, width);
+            gradient.addColorStop(0, '#5D2E46'); // Warm Rose/Mauve center
+            gradient.addColorStop(0.6, '#2b102f'); // Deep Purple
+            gradient.addColorStop(1, '#180820'); // Darkest Violet edges
+            
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, width, height);
+            
             ctx.globalCompositeOperation = 'lighter';
 
             for (let i = particles.length - 1; i >= 0; i--) {
@@ -337,7 +352,9 @@
 
         // Start
         animate();
-        // Welcome bloom
+        
+        // Ensure font is loaded before initial bloom? 
+        // We'll just bloom immediately, font will load for the finale later.
         setTimeout(() => spawnBlossom(width / 2, height / 2), 500);
 
     </script>

@@ -59,7 +59,7 @@
 <body>
 
     <div id="ui-layer">
-        <button class="btn" id="finaleBtn">Final Bloom</button>
+        <button class="btn" id="finaleBtn">Mystérieux</button>
     </div>
     <canvas id="canvas"></canvas>
 
@@ -106,8 +106,10 @@
             offCanvas.width = width;
             offCanvas.height = height;
 
-            // Responsive Font Sizing
-            const fontSize = Math.min(width * 0.28, 280); // Slightly larger for "U"
+            // Responsive Font Sizing - Reduced size to fit screen better
+            // Changed from 0.28/280 to 0.15/150 to ensure "I Love U" fits without overflowing
+            const fontSize = Math.min(width * 0.15, 150); 
+            
             offCtx.font = `${fontSize}px "Great Vibes", cursive`; 
             offCtx.fillStyle = 'white';
             offCtx.textAlign = 'center';
@@ -118,8 +120,8 @@
             const data = imageData.data;
             const points = [];
             
-            // Scan pixels
-            const gap = width < 600 ? 5 : 6; 
+            // Scan pixels - Adjusted gap for smaller text to maintain density
+            const gap = width < 600 ? 4 : 5; 
             
             for (let y = 0; y < height; y += gap) {
                 for (let x = 0; x < width; x += gap) {

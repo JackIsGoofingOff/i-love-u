@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Particle Blossom: Finale</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050A18; /* Deep Navy */
+        }
+
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+
+        #ui-layer {
+            position: absolute;
+            bottom: 40px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 12px 24px;
+            font-family: 'Segoe UI', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 12px;
+            border-radius: 30px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
+            border-color: rgba(255, 105, 180, 0.6);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <button class="btn" id="finaleBtn">Final Bloom</button>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const finaleBtn = document.getElementById('finaleBtn');
+
+        let width, height;
+        let particles = [];
+        let textPoints = [];
+        
+        // Configuration
+        const config = {
+            particleCount: 120, 
+            drag: 0.95,        
+            gravity: 0.03,     
+            colors: [
+                '255, 105, 180', // Hot Pink
+                '255, 182, 193', // Light Pink
+                '218, 112, 214', // Orchid
+                '147, 112, 219', // Medium Purple
+                '255, 215, 0',   // Gold
+                '255, 223, 186'  // Peach
+            ],
+            flowerShapes: [4, 5, 6, 8]
+        };
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const random = (min, max) => Math.random() * (max - min) + min;
+        const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+        const randomColor = () => config.colors[Math.floor(Math.random() * config.colors.length)];
+
+        // --- Text Mapping Logic ---
+        function calculateTextCoordinates(text) {
+            // Create an offscreen canvas to render text and scan pixels
+            const offCanvas = document.createElement('canvas');
+            const offCtx = offCanvas.getContext('2d');
+            offCanvas.width = width;
+            offCanvas.height = height;
+
+            const fontSize = Math.min(width * 0.15, 150); // Responsive font size
+            offCtx.font = `900 ${fontSize}px "Segoe UI", sans-serif`;
+            offCtx.fillStyle = 'white';
+            offCtx.textAlign = 'center';
+            offCtx.textBaseline = 'middle';
+            offCtx.fillText(text, width / 2, height / 2);
+
+            const imageData = offCtx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+            const points = [];
+            
+            // Scan pixels (gap controls density)
+            const gap = 6; 
+            
+            for (let y = 0; y < height; y += gap) {
+                for (let x = 0; x < width; x += gap) {
+                    const index = (y * width + x) * 4;
+                    const alpha = data[index + 3];
+                    
+                    if (alpha > 128) { // If pixel is visible
+                        points.push({ x, y });
+                    }
+                }
+            }
+            return points;
+        }
+
+        class Particle {
+            constructor(x, y, type, target = null) {
+                this.x = x;
+                this.y = y;
+                this.type = type; // 'blossom', 'pollen', 'text'
+                this.color = randomColor();
+                
+                // If it's a text particle, it needs a target destination
+                this.target = target; 
+                this.arrived = false;
+
+                if (type === 'blossom') {
+                    this.radius = random(1.5, 4);
+                    this.life = random(0.6, 1);
+                    this.decay = random(0.005, 0.015);
+                } else if (type === 'pollen') {
+                    this.radius = random(0.5, 2);
+                    this.life = 1;
+                    this.decay = random(0.02, 0.05);
+                    this.color = '255, 215, 0';
+                } else if (type === 'text') {
+                    this.radius = random(1.5, 3);
+                    this.life = 1; // Lives forever until cleared
+                    this.decay = 0;
+                    this.color = randomColor(); // Multicolor text
+                }
+
+                this.vx = 0;
+                this.vy = 0;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                
+                // Dynamic opacity based on life or pulsing if arrived
+                let alpha = this.life;
+                if (this.type === 'text' && this.arrived) {
+                    // Twinkle effect for text
+                    alpha = 0.6 + Math.sin(Date.now() * 0.005 + this.x) * 0.4;
+                }
+
+                ctx.shadowBlur = this.radius * 2;
+                ctx.shadowColor = `rgba(${this.color}, ${alpha})`;
+                ctx.fillStyle = `rgba(${this.color}, ${alpha})`;
+                
+                ctx.fill();
+                ctx.closePath();
+                ctx.shadowBlur = 0; 
+            }
+
+            update() {
+                if (this.type === 'text') {
+                    this.updateTextPhysics();
+                } else {
+                    this.updateNormalPhysics();
+                }
+            }
+
+            updateNormalPhysics() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= config.drag;
+                this.vy *= config.drag;
+                this.vy += config.gravity;
+                this.life -= this.decay;
+                
+                if (this.life < 0.3) this.radius *= 0.95;
+            }
+
+            updateTextPhysics() {
+                // Phase 1: Explosion (high velocity)
+                // Phase 2: Attraction (move to target)
+                
+                // Slow down the explosion
+                this.vx *= 0.92;
+                this.vy *= 0.92;
+                
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Move towards target
+                const dx = this.target.x - this.x;
+                const dy = this.target.y - this.y;
+                
+                // Spring physics to snap into place
+                this.x += dx * 0.08;
+                this.y += dy * 0.08;
+
+                // Check arrival
+                if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
+                    this.arrived = true;
+                }
+            }
+        }
+
+        function spawnBlossom(x, y) {
+            const petalCount = config.flowerShapes[randomInt(0, config.flowerShapes.length - 1)];
+            const angleOffset = random(0, Math.PI * 2);
+            
+            for (let i = 0; i < config.particleCount; i++) {
+                const p = new Particle(x, y, 'blossom');
+                const angle = random(0, Math.PI * 2);
+                const velocityBase = random(3, 12);
+                const flowerShape = Math.abs(Math.cos((angle + angleOffset) * (petalCount / 2))); 
+                const speed = velocityBase * (0.4 + 0.6 * flowerShape);
+
+                p.vx = Math.cos(angle) * speed;
+                p.vy = Math.sin(angle) * speed;
+
+                particles.push(p);
+            }
+        }
+
+        function spawnPollen(x, y) {
+            const count = 2;
+            for (let i = 0; i < count; i++) {
+                const p = new Particle(x, y, 'pollen');
+                const angle = random(0, Math.PI * 2);
+                const speed = random(0.5, 2);
+                p.vx = Math.cos(angle) * speed;
+                p.vy = Math.sin(angle) * speed;
+                particles.push(p);
+            }
+        }
+
+        function triggerFinale() {
+            // 1. Clear existing standard particles to reduce noise
+            particles = particles.filter(p => p.type === 'text');
+
+            // 2. Calculate points for text
+            const points = calculateTextCoordinates("I LOVE U");
+
+            // 3. Spawn particles
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            points.forEach(point => {
+                const p = new Particle(centerX, centerY, 'text', point);
+                
+                // Initial Explosion Velocity
+                const angle = random(0, Math.PI * 2);
+                const speed = random(10, 20); // Fast burst
+                p.vx = Math.cos(angle) * speed;
+                p.vy = Math.sin(angle) * speed;
+                
+                particles.push(p);
+            });
+        }
+
+        // Animation Loop
+        function animate() {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = '#050A18';
+            ctx.fillRect(0, 0, width, height);
+            ctx.globalCompositeOperation = 'lighter';
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.draw();
+
+                // Cleanup dead particles (text particles live forever)
+                if (p.type !== 'text' && (p.life <= 0 || p.radius < 0.1)) {
+                    particles.splice(i, 1);
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // Input Handling
+        let isTouch = false;
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isTouch) spawnPollen(e.clientX, e.clientY);
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target !== finaleBtn) {
+                spawnBlossom(e.clientX, e.clientY);
+            }
+        });
+
+        window.addEventListener('touchstart', (e) => {
+            isTouch = true;
+            if (e.target !== finaleBtn) {
+                const touch = e.touches[0];
+                spawnBlossom(touch.clientX, touch.clientY);
+            }
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (e.target !== finaleBtn) {
+                const touch = e.touches[0];
+                spawnPollen(touch.clientX, touch.clientY);
+            }
+        });
+
+        finaleBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent canvas click
+            finaleBtn.innerText = "❤️"; // Change button to heart
+            finaleBtn.style.opacity = 0.5;
+            triggerFinale();
+        });
+
+        // Start
+        animate();
+        // Welcome bloom
+        setTimeout(() => spawnBlossom(width / 2, height / 2), 500);
+
+    </script>
+</body>
+</html>
